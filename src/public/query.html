@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query AI</title>
+    <style>
+        /* Add your CSS styles here */
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Query API Demo</h1>
+    <form id="queryForm">
+        <label for="query">Query:</label>
+        <input type="text" id="query" required><br><br>
+
+        <label for="tag">Tag:</label>
+        <input type="text" id="tag"><br><br>
+
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date"><br><br>
+
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date"><br><br>
+
+        <label for="top_k">Total Number of Results:</label>
+        <input type="number" id="top_k"><br><br>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    <label for="toggle">Show All:</label>
+    <input type="checkbox" id="toggle">
+
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('queryForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const query = document.getElementById('query').value;
+            const tag = document.getElementById('tag').value;
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const topK = document.getElementById('top_k').value;
+
+            // Make a fetch request to the API
+            fetch('http://localhost:3000/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query,
+                    tag,
+                    start_date: startDate || undefined,
+                    end_date: endDate || undefined,
+                    top_k: topK,
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    response.json().then((data) => {
+                        const msg = `HTTP error! Status: ${response.status}, Message: ${JSON.stringify(data, null, 2)}`;
+                        displayError(msg)
+                        throw new Error(msg);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayResults(data);
+            })
+            .catch(error => {
+                displayError(error.message);
+            });
+        });
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (data.results) {
+                data.results.forEach(result => {
+                    const { text, metadata } = result;
+                    const resultDiv = document.createElement('div');
+
+                    // Create a <p> tag for text
+                    const textParagraph = document.createElement('p');
+                    textParagraph.textContent = text;
+                    resultDiv.appendChild(textParagraph);
+
+                    // Create a collapsible section for metadata
+                    const metadataDiv = document.createElement('div');
+                    metadataDiv.classList.add('hidden');
+
+                    // Create <p> tags for metadata fields
+                    const urlParagraph = document.createElement('p');
+                    urlParagraph.textContent = `URL: ${metadata.url}`;
+                    metadataDiv.appendChild(urlParagraph);
+
+                    const createdAtParagraph = document.createElement('p');
+                    createdAtParagraph.textContent = `Created At: ${new Date(metadata.created_at*1000)}`;
+                    metadataDiv.appendChild(createdAtParagraph);
+
+                    const authorParagraph = document.createElement('p');
+                    authorParagraph.textContent = `Tag: ${metadata.author}`;
+                    metadataDiv.appendChild(authorParagraph);
+
+                    resultDiv.appendChild(metadataDiv);
+
+                    // Add click event to toggle the visibility of metadata
+                    textParagraph.addEventListener('click', () => {
+                        metadataDiv.classList.toggle('hidden');
+                    });
+
+                    // Add a CSS class based on success
+                    resultDiv.classList.add('success');
+                    resultsDiv.appendChild(resultDiv);
+                });
+            }
+        }
+
+        function displayError(error) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            const errorDiv = document.createElement('div');
+            errorDiv.textContent = error;
+            errorDiv.classList.add('error');
+            resultsDiv.appendChild(errorDiv);
+        }
+
+        const toggleSwitch = document.getElementById('toggle');
+        // Find all elements with the class name "hidden"
+        const hiddenElements = document.getElementsByClassName('hidden');
+
+        toggleSwitch.addEventListener('change', () => {
+            // Loop through the elements and toggle their display property
+            Array.from(hiddenElements).forEach((element) => {
+                if (toggleSwitch.checked) {
+                    element.style.display = 'block'; // Show the element
+                } else {
+                    element.style.display = 'none'; // Hide the element
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
